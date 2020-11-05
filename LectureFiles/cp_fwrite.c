@@ -1,5 +1,5 @@
 // cp <file1> <file2>
-// implemented with fgetc
+// implemented with libc and *zero* error handling
 
 #include <stdio.h>
 
@@ -21,14 +21,18 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int c; // not char!
-    while ((c = fgetc(input_stream)) != EOF) {
-        fputc(c, output_stream);
+    // this will be slightly faster than an a fgetc/fputc loop
+    while (1) {
+        char bytes[BUFSIZ];
+        size_t bytes_read = fread(bytes, 1, sizeof bytes, input_stream);
+        if (bytes_read <= 0) {
+            break;
+        }
+        fwrite(bytes, 1, bytes_read, output_stream);
     }
-
 
     fclose(input_stream);  // optional as close occurs
     fclose(output_stream); // automatically on exit
-    
+
     return 0;
 }

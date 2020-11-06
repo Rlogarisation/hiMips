@@ -69,6 +69,9 @@ od --endian=big -t u2 -A d -w2  biggest.bort
 #include <stdint.h>
 #include <assert.h>
 
+// 0000 0000 1111 1111
+#define MASK 0xFF
+
 int main(int argc, char *argv[]) {
 
     if (argc != 4) {
@@ -86,10 +89,10 @@ int main(int argc, char *argv[]) {
     int starting_number = atoi(argv[2]);
     int ending_number = atoi(argv[3]);
     assert(starting_number <= ending_number);
-    int counter = starting_number;
+    uint32_t counter = (uint32_t)starting_number;
     while (counter <= ending_number) {
         fprintf(output_stream, "%c", counter >> 8);
-        fprintf(output_stream, "%c", counter);
+        fprintf(output_stream, "%c", counter & MASK);
         
         counter++;
     }

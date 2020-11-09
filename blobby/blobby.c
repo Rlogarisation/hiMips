@@ -63,7 +63,20 @@ uint8_t blobby_hash(uint8_t hash, uint8_t byte);
 
 // ADD YOUR FUNCTION PROTOTYPES HERE
 void read_blob(FILE *input_stream);
-
+uint64_t mode_recognition(int counter_field_length, uint64_t input_integer, 
+uint64_t mode);
+uint16_t pathname_length_recognition(int counter_field_length, 
+uint64_t input_integer, uint16_t pathname_length);
+uint64_t content_length_recognition(int counter_field_length, 
+uint64_t input_integer, uint64_t content_length);
+int pathname_recognition(int counter_field_length, 
+uint64_t input_integer, int counter_pathname_length, 
+char *pathname, uint16_t pathname_length);
+int content_recognition(int counter_field_length, 
+uint64_t input_integer, int counter_content_length, 
+char *content, uint16_t pathname_length, uint64_t content_length);
+uint8_t hash_recognition(int counter_field_length, uint64_t input_integer, 
+uint8_t hash, uint16_t pathname_length, uint64_t content_length);
 // YOU SHOULD NOT NEED TO CHANGE main, usage or process_arguments
 
 int main(int argc, char *argv[]) {
@@ -183,7 +196,7 @@ void read_blob(FILE *input_stream) {
     char pathname[BUFSIZ] = {'\0'};
     
     int counter_pathname_length = 0;
-    //char content[BUFSIZ];
+    char content[BUFSIZ];
     int counter_content_length = 0;
     uint8_t hash;
     while ((input_integer = fgetc(input_stream)) != EOF) {
@@ -214,50 +227,86 @@ void read_blob(FILE *input_stream) {
         }
         
         // Mode.
-        if (counter_field_length >= START_POS_MODE && 
-        counter_field_length <= END_POS_MODE) {
-            mode |= input_integer << 
-            ((END_POS_MODE - counter_field_length) * BYTE2BIT);
-        }
+        mode = mode_recognition(counter_field_length, input_integer, mode);
         // Pathname length.
-        else if (counter_field_length >= START_POS_PATHNAME_LENGTH &&
-        counter_field_length <= END_POS_PATHNAME_LENGTH) {
-            pathname_length |= input_integer << 
-            ((END_POS_PATHNAME_LENGTH - counter_field_length) * BYTE2BIT);
-        }
+        pathname_length = pathname_length_recognition(counter_field_length, 
+        input_integer, pathname_length); 
         // Content length.
-        else if (counter_field_length >= START_POS_CONTENT_LENGTH && 
-        counter_field_length <= END_POS_CONTENT_LENGTH) {
-            content_length |= input_integer << 
-            (END_POS_CONTENT_LENGTH - counter_field_length) * BYTE2BIT;
-        }
+        content_length = content_length_recognition(counter_field_length, 
+        input_integer, content_length);
         // Path name.
-        else if (counter_field_length >= START_POS_PATHNAME &&
-        counter_field_length <= END_POS_PATHNAME) {
-            pathname[counter_pathname_length] = input_integer;
-            counter_pathname_length++;
-        }
+        counter_pathname_length = pathname_recognition(
+        counter_field_length, input_integer, counter_pathname_length, pathname, 
+        pathname_length);
         // Content.
-        else if (counter_field_length >= START_POS_CONTENT &&
-        counter_field_length <= END_POS_CONTENT) {
-            //content[counter_content_length] = input_integer;
-            counter_content_length++;
-        }
+        counter_content_length = content_recognition(counter_field_length, 
+        input_integer, counter_content_length, content, pathname_length, 
+        content_length); 
         // Hash.
-        else if (counter_field_length == POS_HASH) {
-            hash = input_integer;
-        }
+        hash = hash_recognition(counter_field_length, input_integer, hash, 
+        pathname_length, content_length);
+
+
         counter_field_length++;
     }
-    
+   
     printf("%06lo %5lu %s\n", mode, content_length, pathname);
 }
 
-
-
-
-
-
+uint64_t mode_recognition(int counter_field_length, uint64_t input_integer, 
+uint64_t mode) {
+    if (counter_field_length >= START_POS_MODE && 
+    counter_field_length <= END_POS_MODE) {
+        mode |= input_integer << 
+        ((END_POS_MODE - counter_field_length) * BYTE2BIT);
+    }
+    return mode;
+}
+uint16_t pathname_length_recognition(int counter_field_length, 
+uint64_t input_integer, uint16_t pathname_length) {
+    if (counter_field_length >= START_POS_PATHNAME_LENGTH &&
+    counter_field_length <= END_POS_PATHNAME_LENGTH) {
+        pathname_length |= input_integer << 
+        ((END_POS_PATHNAME_LENGTH - counter_field_length) * BYTE2BIT);
+    }
+    return pathname_length;
+}
+uint64_t content_length_recognition(int counter_field_length, 
+uint64_t input_integer, uint64_t content_length) {
+    if (counter_field_length >= START_POS_CONTENT_LENGTH && 
+    counter_field_length <= END_POS_CONTENT_LENGTH) {
+        content_length |= input_integer << 
+        (END_POS_CONTENT_LENGTH - counter_field_length) * BYTE2BIT;
+    }
+    return content_length;
+}
+int pathname_recognition(int counter_field_length, 
+uint64_t input_integer, int counter_pathname_length, 
+char *pathname, uint16_t pathname_length) {
+    if (counter_field_length >= START_POS_PATHNAME &&
+    counter_field_length <= END_POS_PATHNAME) {
+        pathname[counter_pathname_length] = input_integer;
+        counter_pathname_length++;
+    }
+    return counter_pathname_length;
+}
+int content_recognition(int counter_field_length, 
+uint64_t input_integer, int counter_content_length, 
+char *content, uint16_t pathname_length, uint64_t content_length) {
+    if (counter_field_length >= START_POS_CONTENT &&
+    counter_field_length <= END_POS_CONTENT) {
+        //content[counter_content_length] = input_integer;
+        counter_content_length++;
+    }
+    return counter_content_length;
+}
+uint8_t hash_recognition(int counter_field_length, uint64_t input_integer, 
+uint8_t hash, uint16_t pathname_length, uint64_t content_length) {
+    if (counter_field_length == POS_HASH) {
+        hash = input_integer;
+    }
+    return hash;
+}
 
 // extract the contents of blob_pathname
 

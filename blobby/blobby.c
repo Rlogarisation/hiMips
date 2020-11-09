@@ -38,7 +38,9 @@
 #define END_POS_CONTENT_LENGTH 11
 #define START_POS_PATHNAME 12
 #define END_POS_PATHNAME (START_POS_PATHNAME + pathname_length - 1)
-
+#define START_POS_CONTENT (END_POS_PATHNAME + 1)
+#define END_POS_CONTENT (START_POS_CONTENT + content_length - 1)
+#define POS_HASH (END_POS_CONTENT + 1)
 
 typedef enum action {
     a_invalid,
@@ -61,7 +63,6 @@ uint8_t blobby_hash(uint8_t hash, uint8_t byte);
 
 // ADD YOUR FUNCTION PROTOTYPES HERE
 void read_blob(FILE *input_stream);
-int recognise_each_blob(FILE *input_stream);
 
 // YOU SHOULD NOT NEED TO CHANGE main, usage or process_arguments
 
@@ -180,7 +181,11 @@ void read_blob(FILE *input_stream) {
     uint16_t pathname_length = 0;
     uint64_t content_length = 0;
     char pathname[BUFSIZ] = {'\0'};
+    
     int counter_pathname_length = 0;
+    //char content[BUFSIZ];
+    int counter_content_length = 0;
+    uint8_t hash;
     while ((input_integer = fgetc(input_stream)) != EOF) {
         /*
         printf("%3ld   ", input_integer);
@@ -188,6 +193,25 @@ void read_blob(FILE *input_stream) {
         printf("\n");
         */
 
+        // Magic number.
+        if (input_integer == 'B' && counter_field_length > 12 && 
+        pathname_length == counter_pathname_length &&
+        content_length == counter_content_length) {
+            printf("%06lo %5lu %s\n", mode, content_length, pathname);
+            counter_field_length = 0;
+            mode = 0;
+            pathname_length = 0;
+            memset(pathname, '\0', BUFSIZ);
+            content_length = 0;
+            counter_pathname_length = 0;
+            counter_content_length = 0;
+            hash = 0;
+            
+        }
+        if (counter_field_length == 0 && input_integer != 'B') {
+            fprintf(stderr, "ERROR: Magic byte of blobette incorrect\n");
+            exit(EXIT_FAILURE);
+        }
         
         // Mode.
         if (counter_field_length >= START_POS_MODE && 
@@ -214,57 +238,25 @@ void read_blob(FILE *input_stream) {
             counter_pathname_length++;
         }
         // Content.
-        else if () {
-            
+        else if (counter_field_length >= START_POS_CONTENT &&
+        counter_field_length <= END_POS_CONTENT) {
+            //content[counter_content_length] = input_integer;
+            counter_content_length++;
         }
-
-        // Magic number.
-        if (input_integer == 'B' && counter_field_length != 0 && 
-        pathname_length == strlen(pathname)) {
-            printf("%06lo %5lu %s\n", mode, content_length, pathname);
-            counter_field_length = 0;
+        // Hash.
+        else if (counter_field_length == POS_HASH) {
+            hash = input_integer;
         }
-        
-        printf("THIS IS MODE: %6lo\n", mode);
-        printf("THIS IS PATHNAME_LENGTH: %d\n", pathname_length);
-        printf("THIS IS CONTENT_LENGTH: %5lu\n", content_length);
-        printf("THIS IS PATHNAME: %s\n", pathname);
-
-
-        //printf("list_blob called to list '%s'\n", blob_pathname);
-        
-
-        
         counter_field_length++;
     }
     
     printf("%06lo %5lu %s\n", mode, content_length, pathname);
-    
 }
 
 
 
 
-// This function will be actived when input_integer is 'B', 
-// this function will return 1 if 'B' means the start of a separate blob,
-// return 0 otherwise.
-// Magic number, pathname_length and content length must be matched,
-// in order to return 1.
-int recognise_each_blob(FILE *input_stream) {
-    int magic_number;
-    uint16_t pathname_length = 0;
-    fseek(input_stream, 0, SEEK_SET);
-    magic_number = fgetc(input_stream);
-    printf("MAGIC NUMBER: %d\n", magic_number);
-    fseek(input_stream, 4, SEEK_SET);
-    pathname_length |= fgetc(input_stream) << BYTE2BIT;
-    fseek(input_stream, 1, SEEK_CUR);
-    pathname_length |= fgetc(input_stream);
-    printf("PATHNAME_LENGTH: %d\n", pathname_length);
 
-    //fseek(input_stream, 0, SEEK_SET);
-    return 0;
-}
 
 
 // extract the contents of blob_pathname

@@ -200,11 +200,6 @@ void read_blob(FILE *input_stream) {
     int counter_content_length = 0;
     uint8_t hash;
     while ((input_integer = fgetc(input_stream)) != EOF) {
-        /*
-        printf("%3ld   ", input_integer);
-        fputc(input_integer, stdout);
-        printf("\n");
-        */
 
         // Magic number.
         if (input_integer == 'B' && counter_field_length > 12 && 
@@ -295,7 +290,7 @@ uint64_t input_integer, int counter_content_length,
 char *content, uint16_t pathname_length, uint64_t content_length) {
     if (counter_field_length >= START_POS_CONTENT &&
     counter_field_length <= END_POS_CONTENT) {
-        //content[counter_content_length] = input_integer;
+        content[counter_content_length] = input_integer;
         counter_content_length++;
     }
     return counter_content_length;
@@ -312,9 +307,93 @@ uint8_t hash, uint16_t pathname_length, uint64_t content_length) {
 
 void extract_blob(char *blob_pathname) {
 
-    // REPLACE WITH YOUR CODE FOR -x
+    FILE *input_stream = fopen(blob_pathname, "rb");
+    if (input_stream == NULL) {
+        perror(blob_pathname);
+        exit(EXIT_FAILURE);
+    }
+    int counter_field_length = 0;
+    uint64_t input_integer;
+    uint64_t mode = 0;
+    uint16_t pathname_length = 0;
+    uint64_t content_length = 0;
+    char pathname[BUFSIZ] = {'\0'};
+    
+    int counter_pathname_length = 0;
+    char content[BUFSIZ];
+    int counter_content_length = 0;
+    uint8_t hash;
+    while ((input_integer = fgetc(input_stream)) != EOF) {
 
-    printf("extract_blob called to extract '%s'\n", blob_pathname);
+        
+        if (counter_field_length == 0 && input_integer != 'B') {
+            fprintf(stderr, "ERROR: Magic byte of blobette incorrect\n");
+            exit(EXIT_FAILURE);
+        }
+        
+        // Mode.
+        mode = mode_recognition(counter_field_length, input_integer, mode);
+        // Pathname length.
+        pathname_length = pathname_length_recognition(counter_field_length, 
+        input_integer, pathname_length); 
+        // Content length.
+        content_length = content_length_recognition(counter_field_length, 
+        input_integer, content_length);
+        // Path name.
+        counter_pathname_length = pathname_recognition(
+        counter_field_length, input_integer, counter_pathname_length, pathname, 
+        pathname_length);
+        // Content.
+        counter_content_length = content_recognition(counter_field_length, 
+        input_integer, counter_content_length, content, pathname_length, 
+        content_length); 
+        // Hash.
+        hash = hash_recognition(counter_field_length, input_integer, hash, 
+        pathname_length, content_length);
+        // Magic number.
+        if (input_integer == 'B' && counter_field_length > 12 && 
+        pathname_length == counter_pathname_length &&
+        content_length == counter_content_length) {
+            FILE *output_stream = fopen(pathname, "w");
+            if (output_stream == NULL) {
+                perror(pathname);
+                exit(EXIT_FAILURE);
+            }
+            int counter_output = 0;
+            while (counter_output < content_length) {
+                fputc(content[counter_output], output_stream);
+                counter_output++;
+            }
+            printf("Extracting: %s", pathname);
+
+            counter_field_length = 0;
+            mode = 0;
+            pathname_length = 0;
+            memset(pathname, '\0', BUFSIZ);
+            content_length = 0;
+            counter_pathname_length = 0;
+            counter_content_length = 0;
+            hash = 0;
+            
+        }
+        FILE *output_stream = fopen(pathname, "w");
+        if (output_stream == NULL) {
+            perror(pathname);
+            exit(EXIT_FAILURE);
+        }
+        int counter_output = 0;
+        while (counter_output < content_length) {
+            fputc(content[counter_output], output_stream);
+            counter_output++;
+        }
+        printf("Extracting: %s", pathname);
+
+        counter_field_length++;
+    }
+    
+
+
+    //printf("extract_blob called to extract '%s'\n", blob_pathname);
 }
 
 // create blob_pathname from NULL-terminated array pathnames

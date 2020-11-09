@@ -60,7 +60,8 @@ uint8_t blobby_hash(uint8_t hash, uint8_t byte);
 
 
 // ADD YOUR FUNCTION PROTOTYPES HERE
-
+void read_blob(FILE *input_stream);
+int recognise_each_blob(FILE *input_stream);
 
 // YOU SHOULD NOT NEED TO CHANGE main, usage or process_arguments
 
@@ -168,6 +169,11 @@ void list_blob(char *blob_pathname) {
         perror(blob_pathname);
         exit(EXIT_FAILURE);
     }
+    read_blob(input_stream);
+    
+}
+
+void read_blob(FILE *input_stream) {
     int counter_field_length = 0;
     uint64_t input_integer;
     uint64_t mode = 0;
@@ -181,12 +187,10 @@ void list_blob(char *blob_pathname) {
         fputc(input_integer, stdout);
         printf("\n");
         */
-        // Magic number.
-        if (input_integer == 'B') {
-            counter_field_length = 0;
-        }
+
+        
         // Mode.
-        else if (counter_field_length >= START_POS_MODE && 
+        if (counter_field_length >= START_POS_MODE && 
         counter_field_length <= END_POS_MODE) {
             mode |= input_integer << 
             ((END_POS_MODE - counter_field_length) * BYTE2BIT);
@@ -209,21 +213,57 @@ void list_blob(char *blob_pathname) {
             pathname[counter_pathname_length] = input_integer;
             counter_pathname_length++;
         }
+        // Content.
+        else if () {
+            
+        }
+
+        // Magic number.
+        if (input_integer == 'B' && counter_field_length != 0 && 
+        pathname_length == strlen(pathname)) {
+            printf("%06lo %5lu %s\n", mode, content_length, pathname);
+            counter_field_length = 0;
+        }
+        
+        printf("THIS IS MODE: %6lo\n", mode);
+        printf("THIS IS PATHNAME_LENGTH: %d\n", pathname_length);
+        printf("THIS IS CONTENT_LENGTH: %5lu\n", content_length);
+        printf("THIS IS PATHNAME: %s\n", pathname);
+
+
+        //printf("list_blob called to list '%s'\n", blob_pathname);
+        
+
         
         counter_field_length++;
     }
-    /*
-    printf("THIS IS MODE: %6lo\n", mode);
-    printf("THIS IS PATHNAME_LENGTH: %d\n", pathname_length);
-    printf("THIS IS CONTENT_LENGTH: %5lu\n", content_length);
-    printf("END_POS_PATHNAME: %d\n", END_POS_PATHNAME);
-    printf("THIS IS PATHNAME: %s\n", pathname);
-
-
-    printf("list_blob called to list '%s'\n", blob_pathname);
-    */
     
     printf("%06lo %5lu %s\n", mode, content_length, pathname);
+    
+}
+
+
+
+
+// This function will be actived when input_integer is 'B', 
+// this function will return 1 if 'B' means the start of a separate blob,
+// return 0 otherwise.
+// Magic number, pathname_length and content length must be matched,
+// in order to return 1.
+int recognise_each_blob(FILE *input_stream) {
+    int magic_number;
+    uint16_t pathname_length = 0;
+    fseek(input_stream, 0, SEEK_SET);
+    magic_number = fgetc(input_stream);
+    printf("MAGIC NUMBER: %d\n", magic_number);
+    fseek(input_stream, 4, SEEK_SET);
+    pathname_length |= fgetc(input_stream) << BYTE2BIT;
+    fseek(input_stream, 1, SEEK_CUR);
+    pathname_length |= fgetc(input_stream);
+    printf("PATHNAME_LENGTH: %d\n", pathname_length);
+
+    //fseek(input_stream, 0, SEEK_SET);
+    return 0;
 }
 
 

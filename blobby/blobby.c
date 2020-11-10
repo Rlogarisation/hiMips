@@ -30,6 +30,7 @@
 
 // ADD YOUR #defines HERE
 #define BYTE2BIT 8
+#define METASIZE 128362
 #define START_POS_MODE 1
 #define END_POS_MODE 3
 #define START_POS_PATHNAME_LENGTH 4
@@ -76,7 +77,11 @@ int content_recognition(int counter_field_length,
 uint64_t input_integer, int counter_content_length, 
 char *content, uint16_t pathname_length, uint64_t content_length);
 uint8_t hash_recognition(int counter_field_length, uint64_t input_integer, 
-uint8_t hash, uint16_t pathname_length, uint64_t content_length);
+uint8_t hash, uint8_t calculated_hash, uint16_t pathname_length, 
+uint64_t content_length);
+int new_blob_recognition(uint64_t input_integer, int counter_field_length, 
+uint16_t pathname_length, int counter_pathname_length, uint64_t content_length, 
+int counter_content_length);
 // YOU SHOULD NOT NEED TO CHANGE main, usage or process_arguments
 
 int main(int argc, char *argv[]) {
@@ -196,15 +201,16 @@ void read_blob(FILE *input_stream) {
     char pathname[BUFSIZ] = {'\0'};
     
     int counter_pathname_length = 0;
-    char content[BUFSIZ];
+    char content[METASIZE];
     int counter_content_length = 0;
-    uint8_t hash;
+    uint8_t calculated_hash = 0;
+    uint8_t hash = 0;
     while ((input_integer = fgetc(input_stream)) != EOF) {
 
         // Magic number.
-        if (input_integer == 'B' && counter_field_length > 12 && 
-        pathname_length == counter_pathname_length &&
-        content_length == counter_content_length) {
+        if (new_blob_recognition(input_integer, counter_field_length, 
+        pathname_length, counter_pathname_length, content_length, 
+        counter_content_length) == 1) {
             printf("%06lo %5lu %s\n", mode, content_length, pathname);
             counter_field_length = 0;
             mode = 0;
@@ -239,7 +245,7 @@ void read_blob(FILE *input_stream) {
         content_length); 
         // Hash.
         hash = hash_recognition(counter_field_length, input_integer, hash, 
-        pathname_length, content_length);
+        calculated_hash, pathname_length, content_length);
 
 
         counter_field_length++;
@@ -267,9 +273,10 @@ void extract_blob(char *blob_pathname) {
     char pathname[BUFSIZ] = {'\0'};
     
     int counter_pathname_length = 0;
-    char content[BUFSIZ];
+    char content[METASIZE];
     int counter_content_length = 0;
-    uint8_t hash;
+    uint8_t calculated_hash = 0;
+    uint8_t hash = 0;
     while ((input_integer = fgetc(input_stream)) != EOF) {
 
         
@@ -277,6 +284,7 @@ void extract_blob(char *blob_pathname) {
             fprintf(stderr, "ERROR: Magic byte of blobette incorrect\n");
             exit(EXIT_FAILURE);
         }
+        
         
         // Mode.
         mode = mode_recognition(counter_field_length, input_integer, mode);
@@ -296,23 +304,33 @@ void extract_blob(char *blob_pathname) {
         content_length); 
         // Hash.
         hash = hash_recognition(counter_field_length, input_integer, hash, 
-        pathname_length, content_length);
-        // Magic number.
-        if (input_integer == 'B' && counter_field_length > 12 && 
-        pathname_length == counter_pathname_length &&
-        content_length == counter_content_length) {
-            // Can be simplified into function.
+        calculated_hash, pathname_length, content_length);
+        // Recognition of next blob.
+        if (new_blob_recognition(input_integer, counter_field_length, 
+        pathname_length, counter_pathname_length, content_length, 
+        counter_content_length) == 1) {
+            if (hash != calculated_hash) {
+                fprintf(stderr, "ERROR: blob hash incorrect\n");
+                exit(EXIT_FAILURE);
+            }
+            // Open the file.
             FILE *output_stream = fopen(pathname, "w");
             if (output_stream == NULL) {
                 perror(pathname);
                 exit(EXIT_FAILURE);
             }
-            int counter_output = 0;
-            while (counter_output < content_length) {
-                fputc(content[counter_output], output_stream);
-                counter_output++;
+            // Change the permission.
+            if (chmod(pathname, mode) != 0) {
+                perror(pathname);  
+                exit(EXIT_FAILURE);
             }
-            printf("Extracting: %s", pathname);
+            
+            for (int counter_output = 0; counter_output < content_length; 
+            counter_output++) {
+                fputc(content[counter_output], output_stream);
+            }
+            
+            printf("Extracting: %s\n", pathname);
 
             counter_field_length = 0;
             mode = 0;
@@ -321,27 +339,43 @@ void extract_blob(char *blob_pathname) {
             content_length = 0;
             counter_pathname_length = 0;
             counter_content_length = 0;
+            calculated_hash = 0;
             hash = 0;
             
         }
-        FILE *output_stream = fopen(pathname, "w");
-        if (output_stream == NULL) {
-            perror(pathname);
-            exit(EXIT_FAILURE);
+        if (counter_field_length != POS_HASH) {
+            calculated_hash = blobby_hash(calculated_hash, 
+            (uint8_t)input_integer);
         }
-        int counter_output = 0;
-        while (counter_output < content_length) {
-            fputc(content[counter_output], output_stream);
-            counter_output++;
-        }
-        printf("Extracting: %s", pathname);
-
+        
+    
+        
         counter_field_length++;
     }
     
-
-
-    //printf("extract_blob called to extract '%s'\n", blob_pathname);
+    // Open the file.
+    FILE *output_stream = fopen(pathname, "w");
+    if (output_stream == NULL) {
+        perror(pathname);
+        exit(EXIT_FAILURE);
+    }
+    // Change the permission.
+    if (chmod(pathname, mode) != 0) {
+        perror(pathname);  
+        exit(EXIT_FAILURE);
+    }
+    
+    for (int counter_output = 0; counter_output < content_length; 
+    counter_output++) {
+        fputc(content[counter_output], output_stream);
+    }
+    
+    printf("Extracting: %s\n", pathname);
+    if (hash != calculated_hash) {
+        fprintf(stderr, "ERROR: blob hash incorrect\n");
+        exit(EXIT_FAILURE);
+    }
+    
 }
 
 // create blob_pathname from NULL-terminated array pathnames
@@ -362,6 +396,19 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
 
 
 // ADD YOUR FUNCTIONS HERE
+int new_blob_recognition(uint64_t input_integer, int counter_field_length, 
+uint16_t pathname_length, int counter_pathname_length, uint64_t content_length, 
+int counter_content_length) {
+    if (input_integer == 'B' && counter_field_length > 12 && 
+    pathname_length == counter_pathname_length &&
+    content_length == counter_content_length) {
+        return 1;
+    }
+    else {
+        return 0;
+    }
+}
+
 uint64_t mode_recognition(int counter_field_length, uint64_t input_integer, 
 uint64_t mode) {
     if (counter_field_length >= START_POS_MODE && 
@@ -410,10 +457,12 @@ char *content, uint16_t pathname_length, uint64_t content_length) {
     return counter_content_length;
 }
 uint8_t hash_recognition(int counter_field_length, uint64_t input_integer, 
-uint8_t hash, uint16_t pathname_length, uint64_t content_length) {
+uint8_t hash, uint8_t calculated_hash, uint16_t pathname_length, 
+uint64_t content_length) {
     if (counter_field_length == POS_HASH) {
         hash = input_integer;
     }
+    
     return hash;
 }
 
@@ -455,5 +504,6 @@ const uint8_t blobby_hash_table[256] = {
 // ...
 
 uint8_t blobby_hash(uint8_t hash, uint8_t byte) {
+
     return blobby_hash_table[hash ^ byte];
 }

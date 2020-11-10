@@ -3,6 +3,13 @@
 // COMP1521 20T3 Assignment 2
 // Written by Zheng Luo (z5206267@ad.unsw.edu.au) at 7/Nov/2020
 
+/*
+^
++ ====================================== +
++ Give a rundown of your approaches here +
++ ====================================== +
+*/
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,17 +19,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <math.h>
 
 // the first byte of every blobette has this value
 #define BLOBETTE_MAGIC_NUMBER          0x42
-
-// number of bytes in fixed-length blobette fields
-#define BLOBETTE_MAGIC_NUMBER_BYTES    1
-#define BLOBETTE_MODE_LENGTH_BYTES     3
-#define BLOBETTE_PATHNAME_LENGTH_BYTES 2
-#define BLOBETTE_CONTENT_LENGTH_BYTES  6
-#define BLOBETTE_HASH_BYTES            1
 
 // maximum number of bytes in variable-length blobette fields
 #define BLOBETTE_MAX_PATHNAME_LENGTH   65535
@@ -32,6 +31,7 @@
 // ADD YOUR #defines HERE
 #define BYTE2BIT 8
 #define METASIZE 128362
+#define POS_MAGIC_NUMBER 0
 #define START_POS_MODE 1
 #define END_POS_MODE 3
 #define START_POS_PATHNAME_LENGTH 4
@@ -51,7 +51,7 @@ typedef enum action {
     a_create
 } action_t;
 
-
+///////////////////////////////////////////////////////////////////////
 void usage(char *myname);
 action_t process_arguments(int argc, char *argv[], char **blob_pathname,
                            char ***pathnames, int *compress_blob);
@@ -62,8 +62,8 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob);
 
 uint8_t blobby_hash(uint8_t hash, uint8_t byte);
 
-
-// ADD YOUR FUNCTION PROTOTYPES HERE
+// Self-created functions below, 
+// its detailed introductions are located in Self-Created functions
 void read_blob(FILE *input_stream);
 uint64_t mode_recognition(int counter_field_length, uint64_t input_integer, 
 uint64_t mode);
@@ -85,7 +85,7 @@ uint16_t pathname_length, int counter_pathname_length, uint64_t content_length,
 int counter_content_length);
 void create_extracted_blob(char *pathname, char *content, 
 uint64_t content_length, uint8_t calculated_hash, uint8_t hash, uint64_t mode);
-// YOU SHOULD NOT NEED TO CHANGE main, usage or process_arguments
+///////////////////////////////////////////////////////////////////////
 
 int main(int argc, char *argv[]) {
     char *blob_pathname = NULL;
@@ -180,10 +180,11 @@ action_t process_arguments(int argc, char *argv[], char **blob_pathname,
 
     return a_invalid;
 }
-
+////////////////////////////////////////////////////////////////////////
+//                              Subset 0                              //
+////////////////////////////////////////////////////////////////////////
 
 // list the contents of blob_pathname
-
 void list_blob(char *blob_pathname) {
 
     FILE *input_stream = fopen(blob_pathname, "rb");
@@ -196,6 +197,9 @@ void list_blob(char *blob_pathname) {
 }
 
 
+////////////////////////////////////////////////////////////////////////
+//                              Subset 1                              //
+////////////////////////////////////////////////////////////////////////
 
 // extract the contents of blob_pathname
 void extract_blob(char *blob_pathname) {
@@ -211,7 +215,7 @@ void extract_blob(char *blob_pathname) {
     // Variables for pathname.
     uint16_t pathname_length = 0;
     int counter_pathname_length = 0;
-    char pathname[BUFSIZ] = {'\0'};
+    char pathname[BLOBETTE_MAX_PATHNAME_LENGTH] = {'\0'};
     // Variables for content.
     uint64_t content_length = 0;
     int counter_content_length = 0;
@@ -221,7 +225,8 @@ void extract_blob(char *blob_pathname) {
     uint8_t hash = 0;
     while ((input_integer = fgetc(input_stream)) != EOF) {
         // Error if blob not start with 'B'.
-        if (counter_field_length == 0 && input_integer != 'B') {
+        if (counter_field_length == POS_MAGIC_NUMBER && 
+        input_integer != BLOBETTE_MAGIC_NUMBER) {
             fprintf(stderr, "ERROR: Magic byte of blobette incorrect\n");
             exit(EXIT_FAILURE);
         }
@@ -256,7 +261,7 @@ void extract_blob(char *blob_pathname) {
             // Reset pathname variables.
             pathname_length = 0;
             counter_pathname_length = 0;
-            memset(pathname, '\0', BUFSIZ);
+            memset(pathname, '\0', BLOBETTE_MAX_PATHNAME_LENGTH);
             // Reset content variables.
             content_length = 0;
             counter_content_length = 0;
@@ -277,6 +282,10 @@ void extract_blob(char *blob_pathname) {
     hash, mode);
 }
 
+////////////////////////////////////////////////////////////////////////
+//                              Subset 2                              //
+////////////////////////////////////////////////////////////////////////
+
 // create blob_pathname from NULL-terminated array pathnames
 // compress with xz if compress_blob non-zero (subset 4)
 
@@ -284,6 +293,8 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
     // Create a string to store information in blob format.
     int counter_blob = 0;
     uint16_t blob[METASIZE] = {'\0'};
+    // preview_counter is used to store the amount of bytes have been counter,
+    // in the previews blobs, for the sake of calculating hash value.
     int previews_counter = 0;
     // Open each file to read their bytes and convert into blob.
     for (int counter_adding_files = 0; pathnames[counter_adding_files]; 
@@ -300,7 +311,7 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
             exit(EXIT_FAILURE);
         }
         // Store magic number indicates the start of file.
-        blob[counter_blob] = 'B';
+        blob[counter_blob] = BLOBETTE_MAGIC_NUMBER;
         counter_blob++;
         // Store mode of the current file into blob.
         for (int counter_mode = START_POS_MODE; counter_mode <= END_POS_MODE; 
@@ -312,7 +323,8 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
         // Store pathname length into blob.
         uint32_t pathname_length = strlen(pathnames[counter_adding_files]);
         for (int counter_pathname_length = START_POS_PATHNAME_LENGTH; 
-        counter_pathname_length <= END_POS_PATHNAME_LENGTH; counter_pathname_length++) {
+        counter_pathname_length <= END_POS_PATHNAME_LENGTH; 
+        counter_pathname_length++) {
             blob[counter_blob] = (pathname_length >> 
             ((END_POS_PATHNAME_LENGTH - counter_pathname_length) * BYTE2BIT));
             counter_blob++;
@@ -357,15 +369,18 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
         perror(blob_pathname);
         exit(EXIT_FAILURE);
     }
-    for (int counter_output = 0; counter_output < counter_blob; counter_output++) {
+    for (int counter_output = 0; counter_output < counter_blob; 
+    counter_output++) {
         fputc(blob[counter_output], output_stream);
     }
 
 }
 
 
+////////////////////////////////////////////////////////////////////////
+//                       Self-Created Functions                       //
+////////////////////////////////////////////////////////////////////////
 
-// ADD YOUR FUNCTIONS HERE
 // Subset 0.
 void read_blob(FILE *input_stream) {
     // General variables.
@@ -375,7 +390,7 @@ void read_blob(FILE *input_stream) {
     // Variables for pathname.
     uint16_t pathname_length = 0;
     int counter_pathname_length = 0;
-    char pathname[BUFSIZ] = {'\0'};
+    char pathname[BLOBETTE_MAX_PATHNAME_LENGTH] = {'\0'};
     // Variables for content.
     uint64_t content_length = 0;
     int counter_content_length = 0;
@@ -385,7 +400,8 @@ void read_blob(FILE *input_stream) {
     uint8_t hash = 0;
     while ((input_integer = fgetc(input_stream)) != EOF) {
         // Error if blob not start with 'B'.
-        if (counter_field_length == 0 && input_integer != 'B') {
+        if (counter_field_length == POS_MAGIC_NUMBER && 
+        input_integer != BLOBETTE_MAGIC_NUMBER) {
             fprintf(stderr, "ERROR: Magic byte of blobette incorrect\n");
             exit(EXIT_FAILURE);
         }
@@ -438,7 +454,8 @@ void read_blob(FILE *input_stream) {
 int new_blob_recognition(uint64_t input_integer, int counter_field_length, 
 uint16_t pathname_length, int counter_pathname_length, uint64_t content_length, 
 int counter_content_length) {
-    if (input_integer == 'B' && counter_field_length > 12 && 
+    if (input_integer == BLOBETTE_MAGIC_NUMBER && 
+    counter_field_length > START_POS_PATHNAME && 
     pathname_length == counter_pathname_length &&
     content_length == counter_content_length) {
         return 1;
@@ -531,8 +548,6 @@ uint64_t content_length, uint8_t calculated_hash, uint8_t hash, uint64_t mode) {
         exit(EXIT_FAILURE);
     }
 }
-
-// YOU SHOULD NOT CHANGE CODE BELOW HERE
 
 // Lookup table for a simple Pearson hash
 // https://en.wikipedia.org/wiki/Pearson_hashing

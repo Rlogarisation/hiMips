@@ -280,16 +280,61 @@ void extract_blob(char *blob_pathname) {
 // compress with xz if compress_blob non-zero (subset 4)
 
 void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
+    // Create a string to store information in blob format.
+    int counter_blob = 0;
+    char blob[METASIZE] = {'\0'};
+    
+    // Open each file to read their bytes and convert into blob.
+    for (int counter_adding_files = 0; pathnames[counter_adding_files]; 
+    counter_adding_files++) {
+        FILE *input_stream = fopen(pathnames[counter_adding_files], "rb");
+        if (input_stream == NULL) {
+            perror(pathnames[counter_adding_files]);
+            exit(EXIT_FAILURE);
+        }
+        // Obtain information of the file via stat function.
+        struct stat s;
+        if (stat(pathnames[counter_adding_files], &s) != 0) {
+            perror(pathnames[counter_adding_files]);
+            exit(EXIT_FAILURE);
+        }
+        // Store magic number indicates the start of file.
+        blob[counter_blob] = 'B';
+        counter_blob++;
+        // Store mode of the current file into blob.
+        for (int counter_mode = 0; counter_mode < END_POS_MODE; counter_mode++) {
+            blob[counter_blob] = (s.st_mode >> 
+            ((END_POS_MODE - counter_mode - 1) * BYTE2BIT)) & 0xFF;
+            counter_blob++;
+        }
+        // st_mode is in octal mode, convert it into numerical and try again.
 
-    // REPLACE WITH YOUR CODE FOR -c
-
-    printf("create_blob called to create %s blob '%s' containing:\n",
-           compress_blob ? "compressed" : "non-compressed", blob_pathname);
-
-    for (int p = 0; pathnames[p]; p++) {
-        printf("%s\n", pathnames[p]);
+        //printf("MODE: %o\n", s.st_mode);
+        for (int i = 0; i < counter_blob; i++) {
+            printf("%d\n", blob[i]);
+        }
+        /*
+        int input_character;
+        while ((input_character = fgetc(input_stream)) != EOF) {
+            
+        }
+        */
+        // printf("END OF ONE FILE\n");
+        // printf("%s\n", pathnames[counter_adding_files]);
     }
 
+
+
+    FILE *output_stream = fopen(blob_pathname, "wb");
+    if (output_stream == NULL) {
+        perror(blob_pathname);
+        exit(EXIT_FAILURE);
+    }
+
+    /*
+    printf("create_blob called to create %s blob '%s' containing:\n",
+           compress_blob ? "compressed" : "non-compressed", blob_pathname);
+    */
 }
 
 

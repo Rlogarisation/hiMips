@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <math.h>
 
 // the first byte of every blobette has this value
 #define BLOBETTE_MAGIC_NUMBER          0x42
@@ -282,8 +283,8 @@ void extract_blob(char *blob_pathname) {
 void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
     // Create a string to store information in blob format.
     int counter_blob = 0;
-    char blob[METASIZE] = {'\0'};
-    
+    uint16_t blob[METASIZE] = {'\0'};
+    int previews_counter = 0;
     // Open each file to read their bytes and convert into blob.
     for (int counter_adding_files = 0; pathnames[counter_adding_files]; 
     counter_adding_files++) {
@@ -302,40 +303,66 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
         blob[counter_blob] = 'B';
         counter_blob++;
         // Store mode of the current file into blob.
-        for (int counter_mode = 0; counter_mode < END_POS_MODE; counter_mode++) {
+        for (int counter_mode = START_POS_MODE; counter_mode <= END_POS_MODE; 
+        counter_mode++) {
             blob[counter_blob] = (s.st_mode >> 
-            ((END_POS_MODE - counter_mode - 1) * BYTE2BIT)) & 0xFF;
+            ((END_POS_MODE - counter_mode) * BYTE2BIT)) & 0xFF;
             counter_blob++;
         }
-        // st_mode is in octal mode, convert it into numerical and try again.
-
-        //printf("MODE: %o\n", s.st_mode);
-        for (int i = 0; i < counter_blob; i++) {
-            printf("%d\n", blob[i]);
+        // Store pathname length into blob.
+        uint32_t pathname_length = strlen(pathnames[counter_adding_files]);
+        for (int counter_pathname_length = START_POS_PATHNAME_LENGTH; 
+        counter_pathname_length <= END_POS_PATHNAME_LENGTH; counter_pathname_length++) {
+            blob[counter_blob] = (pathname_length >> 
+            ((END_POS_PATHNAME_LENGTH - counter_pathname_length) * BYTE2BIT));
+            counter_blob++;
         }
-        /*
-        int input_character;
-        while ((input_character = fgetc(input_stream)) != EOF) {
+        // Store content length into blob.
+        for (int counter_content_length = START_POS_CONTENT_LENGTH; 
+        counter_content_length <= END_POS_CONTENT_LENGTH; 
+        counter_content_length++) {
+            blob[counter_blob] = (s.st_size >> 
+            ((END_POS_CONTENT_LENGTH - counter_content_length) * BYTE2BIT));
+            counter_blob++;
+        }
+        // Store pathname into blob.
+        for (int counter_pathname = 0; counter_pathname < pathname_length;
+        counter_pathname++) {
+            blob[counter_blob] = pathnames[counter_adding_files][counter_pathname];
+            counter_blob++;
+        }
+        // Store the contents into blob.
+        for (int counter_content = 0; counter_content < s.st_size; 
+        counter_content++) {
+            blob[counter_blob] = fgetc(input_stream);
+            counter_blob++;
+        }
+        // Store hash number into blob.
+        uint8_t calculated_hash = 0;
+        for (int counter_hash = previews_counter; counter_hash < 
+        counter_blob; counter_hash++) {
+            calculated_hash = blobby_hash(calculated_hash, 
+            (uint8_t)blob[counter_hash]);
             
         }
-        */
-        // printf("END OF ONE FILE\n");
-        // printf("%s\n", pathnames[counter_adding_files]);
+        blob[counter_blob] = calculated_hash;
+        counter_blob++;
+        previews_counter = counter_blob;
+        printf("Adding: %s\n", pathnames[counter_adding_files]);
+        
     }
-
-
-
+    // Transfer the blob array into new file.
     FILE *output_stream = fopen(blob_pathname, "wb");
     if (output_stream == NULL) {
         perror(blob_pathname);
         exit(EXIT_FAILURE);
     }
+    for (int counter_output = 0; counter_output < counter_blob; counter_output++) {
+        fputc(blob[counter_output], output_stream);
+    }
 
-    /*
-    printf("create_blob called to create %s blob '%s' containing:\n",
-           compress_blob ? "compressed" : "non-compressed", blob_pathname);
-    */
 }
+
 
 
 // ADD YOUR FUNCTIONS HERE
@@ -543,6 +570,5 @@ const uint8_t blobby_hash_table[256] = {
 // ...
 
 uint8_t blobby_hash(uint8_t hash, uint8_t byte) {
-
     return blobby_hash_table[hash ^ byte];
 }

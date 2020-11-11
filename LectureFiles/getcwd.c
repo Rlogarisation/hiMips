@@ -28,7 +28,7 @@ int main(void) {
             return 1;
         }
         printf("getcwd() returned %s\n", pathname);
-
+        // When it climbed to the topest root of the file system.
         if (strcmp(pathname, "/") == 0) {
             return 0;
         }

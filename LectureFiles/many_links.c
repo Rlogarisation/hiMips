@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     fprintf(f1, "Hello Andrew!\n");
     fclose(f1);
 
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 10; i++) {
         printf("Verifying '%s' contains: ", pathname);
         FILE *f2;
         if ((f2 = fopen(pathname, "r")) == NULL) {

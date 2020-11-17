@@ -25,6 +25,32 @@ Good Bye Andrew!
 $
 */
 
+/*
+Mode Explaination:
+r   Open text file for reading.  
+    The stream is positioned at the beginning of the file.
+
+r+  Open for reading and writing.  
+    The stream is positioned at the beginning of the file.
+
+w   Truncate file to zero length or create text file for writing.  
+    The stream is positioned at the beginning of the file.
+
+w+  Open for reading and writing.   
+    The file is created if it does not exist, otherwise it is truncated.  
+    The stream is positioned at the beginning of the file.
+
+a   Open for appending (writing at end of file).  
+    The file is created if it does not exist.  
+    The stream is positioned at the end of the file.
+
+a+  Open for reading and appending (writing at end of file).  
+    The file is created if it does not exist.  
+    The initial file position for reading is at the beginning of the file, 
+    but output is always appended to the end of the file.
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 

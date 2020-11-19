@@ -20,17 +20,22 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-// the first byte of every blobette has this value
+// General definition.
+#define TRUE 1
+#define FALSE 0
+
+// The first byte of every blobette has this value.
 #define BLOBETTE_MAGIC_NUMBER          0x42
 
-// maximum number of bytes in variable-length blobette fields
+// Maximum number of bytes in variable-length blobette fields.
 #define BLOBETTE_MAX_PATHNAME_LENGTH   65535
 #define BLOBETTE_MAX_CONTENT_LENGTH    281474976710655
 
-
-// ADD YOUR #defines HERE
+// Definition of size.
 #define BYTE2BIT 8
 #define METASIZE 128362
+
+// Definition of position.
 #define POS_MAGIC_NUMBER 0
 #define START_POS_MODE 1
 #define END_POS_MODE 3
@@ -193,6 +198,7 @@ void list_blob(char *blob_pathname) {
         exit(EXIT_FAILURE);
     }
     read_blob(input_stream);
+    fclose(input_stream);
     
 }
 
@@ -280,6 +286,7 @@ void extract_blob(char *blob_pathname) {
     // create blob for the last file which excluded from loop.
     create_extracted_blob(pathname, content, content_length, calculated_hash, 
     hash, mode);
+    fclose(input_stream);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -288,7 +295,6 @@ void extract_blob(char *blob_pathname) {
 
 // create blob_pathname from NULL-terminated array pathnames
 // compress with xz if compress_blob non-zero (subset 4)
-
 void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
     // Create a string to store information in blob format.
     int counter_blob = 0;
@@ -361,7 +367,8 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
         counter_blob++;
         previews_counter = counter_blob;
         printf("Adding: %s\n", pathnames[counter_adding_files]);
-        
+
+        fclose(input_stream);
     }
     // Transfer the blob array into new file.
     FILE *output_stream = fopen(blob_pathname, "wb");
@@ -373,7 +380,7 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
     counter_output++) {
         fputc(blob[counter_output], output_stream);
     }
-
+    fclose(output_stream);
 }
 
 
@@ -381,7 +388,14 @@ void create_blob(char *blob_pathname, char *pathnames[], int compress_blob) {
 //                       Self-Created Functions                       //
 ////////////////////////////////////////////////////////////////////////
 
-// Subset 0.
+// The function read_blob takes input_stream as input, 
+// distract and recognise all the required variables from the blob.
+// The function is initiated with null variables, 
+// these variables will be filled in with first blob after recognition.
+// Then the required message will be printed out.
+// All variables will be reset when we recognise next blob.
+// After the end of the loop (no next blob is detected),
+// we need to print out the required message one more time for last blob.
 void read_blob(FILE *input_stream) {
     // General variables.
     int counter_field_length = 0;
@@ -450,7 +464,13 @@ void read_blob(FILE *input_stream) {
     printf("%06lo %5lu %s\n", mode, content_length, pathname);
 }
 
-
+// The function new_blob_recognition will return 1(TRUE) if it recognise a 
+// new blob else return 0(FALSE).
+// The new blob will only be recognised if and only if:
+// 1. The current input character is 'B'.
+// 2. The previews gap between magic number and pathname length is correct.
+// 3. The previews pathname length is matched.
+// 4. The previews content length is matched.
 int new_blob_recognition(uint64_t input_integer, int counter_field_length, 
 uint16_t pathname_length, int counter_pathname_length, uint64_t content_length, 
 int counter_content_length) {
@@ -458,13 +478,16 @@ int counter_content_length) {
     counter_field_length > START_POS_PATHNAME && 
     pathname_length == counter_pathname_length &&
     content_length == counter_content_length) {
-        return 1;
+        return TRUE;
     }
     else {
-        return 0;
+        return FALSE;
     }
 }
 
+// The function mode_recognition will return (uint64_t)mode by
+// performing neccessary bitwise operation,
+// if the function detects the input is located in one of the position for mode.
 uint64_t mode_recognition(int counter_field_length, uint64_t input_integer, 
 uint64_t mode) {
     if (counter_field_length >= START_POS_MODE && 
@@ -474,6 +497,12 @@ uint64_t mode) {
     }
     return mode;
 }
+
+// The function pathname_length_recognition will return 
+// (uint16_t)pathname_length itself, 
+// by combining both field bytes via bitwise operation,
+// if the function detects the input is located in one of the position for
+// pathname length.
 uint16_t pathname_length_recognition(int counter_field_length, 
 uint64_t input_integer, uint16_t pathname_length) {
     if (counter_field_length >= START_POS_PATHNAME_LENGTH &&
@@ -483,6 +512,11 @@ uint64_t input_integer, uint16_t pathname_length) {
     }
     return pathname_length;
 }
+
+// The function content_length_recognition will return 64-bit content length,
+// through bitwise operation,
+// if the function detects the input is located in one of the position for
+// content length.
 uint64_t content_length_recognition(int counter_field_length, 
 uint64_t input_integer, uint64_t content_length) {
     if (counter_field_length >= START_POS_CONTENT_LENGTH && 
@@ -492,6 +526,10 @@ uint64_t input_integer, uint64_t content_length) {
     }
     return content_length;
 }
+
+// The function pathname_recognition will return single pathname character,
+// if the function detects the input is located in one of the position for
+// pathname.
 int pathname_recognition(int counter_field_length, 
 uint64_t input_integer, int counter_pathname_length, 
 char *pathname, uint16_t pathname_length) {
@@ -502,6 +540,10 @@ char *pathname, uint16_t pathname_length) {
     }
     return counter_pathname_length;
 }
+
+// The function content_recognition will return single content character,
+// if the function detects the input is located in one of the position for
+// content.
 int content_recognition(int counter_field_length, 
 uint64_t input_integer, int counter_content_length, 
 char *content, uint16_t pathname_length, uint64_t content_length) {
@@ -512,6 +554,9 @@ char *content, uint16_t pathname_length, uint64_t content_length) {
     }
     return counter_content_length;
 }
+
+// The function hash_recognition will return 8-bit hash number,
+// if the function detects the input is located in one of the position for hash.
 uint8_t hash_recognition(int counter_field_length, uint64_t input_integer, 
 uint8_t hash, uint8_t calculated_hash, uint16_t pathname_length, 
 uint64_t content_length) {
@@ -522,7 +567,8 @@ uint64_t content_length) {
     return hash;
 }
 
-// Subset 1
+// The create_extracted_blob function creates blob by transfering inputs to 
+// output_stream file.
 void create_extracted_blob(char *pathname, char *content, 
 uint64_t content_length, uint8_t calculated_hash, uint8_t hash, uint64_t mode) {
     // Open the file.
@@ -547,6 +593,7 @@ uint64_t content_length, uint8_t calculated_hash, uint8_t hash, uint64_t mode) {
         fprintf(stderr, "ERROR: blob hash incorrect\n");
         exit(EXIT_FAILURE);
     }
+    fclose(output_stream);
 }
 
 // Lookup table for a simple Pearson hash

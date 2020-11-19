@@ -4,10 +4,16 @@
 // Written by Zheng Luo (z5206267@ad.unsw.edu.au) at 7/Nov/2020
 
 /*
-^
-+ ====================================== +
-+ Give a rundown of your approaches here +
-+ ====================================== +
+Rundown of my approach:
+Subset 0 and 1 are achieved by distracting and recognising different bytes in
+the blob, and converted it or print it out as human readable information 
+via varies of if-else statements and bitwise operations.
+Subset 2 is opposite to subset 1, transfering human readable information into 
+blob format via similar methods but in inverted mannner. 
+Many functions or statements are implemented to minimise the impact of 
+error input, for example, hash authentication and etc.
+Subset 3 and 4 are attempted, but failed to find the correct path under 
+limited time constriction, and the pressure from other assignments.
 */
 
 
@@ -64,11 +70,10 @@ action_t process_arguments(int argc, char *argv[], char **blob_pathname,
 void list_blob(char *blob_pathname);
 void extract_blob(char *blob_pathname);
 void create_blob(char *blob_pathname, char *pathnames[], int compress_blob);
-
 uint8_t blobby_hash(uint8_t hash, uint8_t byte);
 
 // Self-created functions below, 
-// its detailed introductions are located in Self-Created functions
+// its detailed explainations are located in Self-Created functions below.
 void read_blob(FILE *input_stream);
 uint64_t mode_recognition(int counter_field_length, uint64_t input_integer, 
 uint64_t mode);

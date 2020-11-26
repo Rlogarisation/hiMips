@@ -50,9 +50,9 @@ int main(void) {
     print_bits(a, n_bits);
     // Here the a is int type, but the definition of the function is diff, WHY?
     /*
-    Basically we could replace int type with uint32_t, these two are identically
+    Basically we could replace int type with int32_t, these two are identically
     the same,
-    uint64_t is used here for no particular reason as which is more a safe way
+    int64_t is used here for no particular reason as which is more a safe way
     in case the existence of huge number.
     */
     printf("\n");

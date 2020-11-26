@@ -6,7 +6,12 @@
 // found in stdint.h
 
 // What does 8 means in int8_t? And how does it related to 1 byte?
-// 1 Byte == 8 bits, so the number 8 here has the unit of bits.
+// 1 Byte == 8 bits.
+// So here means a int8_t can only contain a 1 byte value(signed char)
+
+/*
+This program does not produce any output.
+*/
 
 #include <stdint.h>
 
@@ -26,6 +31,3 @@ int main(void) {
     return 0;
 }
 
-/*
-This output does not produce any output.
-*/

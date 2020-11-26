@@ -1,0 +1,1 @@
+/web/cs1521/20T3/activities/diary/files.ln/diary.mk

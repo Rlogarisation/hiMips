@@ -23,8 +23,9 @@ it usually to do with the formating.
 // What is signed/unsigned char, short, long and etc? When would they be used?
 /*
 char is == unsigned char by default, signed and signed char have same size, but 
-different range. Unsigned is only storing positive number, but signed stores 
-both positive and negative number.
+different range. 
+Unsigned is only storing positive number, 
+but signed stores both positive and negative number.
 
 */
 

@@ -8,7 +8,7 @@ main:
     li		$v0, 5		# $v0 = 5
     syscall
 
-    and    $t0, $v0, 1
+    and     $t0, $v0, 1
     beq		$t0, 1, odd	# if $t0 == 1 then odd
     
     # Even otherwise

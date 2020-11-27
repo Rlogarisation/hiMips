@@ -2,8 +2,20 @@
 // https://en.wikipedia.org/wiki/Sparse_file
 // error checking omitted for clarity
 
-// WARNING: DO NOT OPEN THIS FILE AS ITS SIZE IS 16 TB
+
+
+
+
+
+
+//****************************************************************
+// WARNING: DO NOT OPEN THE CREATED FILE WHICH HAS SIZE OF 16 TB
 // ONLY CHECK ITS SIZE BY LS COMMAND
+//****************************************************************
+
+
+
+
 
 #include <stdio.h>
 
